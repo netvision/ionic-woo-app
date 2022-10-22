@@ -1,0 +1,7 @@
+{
+  "name": "IonicWooApp",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue"
+}
