@@ -1,19 +1,18 @@
 <template>
   <div id="container">
-    <strong>{{ name }}</strong>
+    <strong>{{ keys}}</strong>
     <p>Explore <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup>
+import { ref, onMounted } from 'vue'
+const keys = ref({})
 
-export default defineComponent({
-  name: 'ExploreContainer',
-  props: {
-    name: String
-  }
-});
+//localStorage.setItem('cs', 'test')
+onMounted(() =>{
+  keys.value = localStorage.getItem('cs')
+})
 </script>
 
 <style scoped>

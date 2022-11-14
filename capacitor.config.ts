@@ -1,7 +1,5 @@
-import { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
+const config = {
+  appId: 'in.netserve.wooadminapp',
   appName: 'IonicWooApp',
   webDir: 'dist',
   bundledWebRuntime: false
