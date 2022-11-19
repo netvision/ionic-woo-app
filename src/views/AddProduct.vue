@@ -44,8 +44,38 @@
           </ion-col>
           <ion-col>
           <ion-item>
+          <ion-label position="stacked" style="margin-bottom:5px">Tags: </ion-label>
+            <v-select
+            :options = "tags"
+            label="name"
+            multiple
+            v-model="newProduct.tags"
+            taggable
+            @option:created = "addTag"
+            @search = "searchTag"
+            append-to-body
+            >
+            <template v-slot:no-options="{ search, searching }">
+                <template v-if="searching">
+                  No results found for <em>{{ search }}</em>. Click to create!
+                </template>
+                <em v-else style="opacity: 0.5">Start typing to search.</em>
+          </template>
+            </v-select>
+          </ion-item>
+          </ion-col>
+          </ion-row>
+          <ion-row>
+          <ion-col>
+          <ion-item>
             <ion-label position="stacked">Price: </ion-label>
             <ion-input v-model="newProduct.regular_price"></ion-input>
+          </ion-item>
+        </ion-col>
+        <ion-col>
+          <ion-item>
+            <ion-label position="stacked">Sale Price: </ion-label>
+            <ion-input v-model="newProduct.sale_price"></ion-input>
           </ion-item>
         </ion-col>
       </ion-row>
@@ -95,6 +125,7 @@
   import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, IonBackButton, IonButton, IonGrid, IonRow, IonCol, IonItem, IonLabel, IonInput } from '@ionic/vue';
   
   const options = ref([])
+  const tags = ref([])
   const imgs = ref({})
   const photoPath = ref()
   const errors = ref({})
@@ -105,6 +136,7 @@
     regular_price: "",
     short_description: "",
     categories: [],
+    tags: [],
     images: [],
   })
 
@@ -144,12 +176,36 @@
     }
   }
 
+  const addTag = async (opt) => {
+    console.log(opt)
+    let url = `${keys.value.url}/wp-json/wc/v3/products/tags`
+    try {
+      //console.log(newProduct.value.categories, opt)
+      let res = await axios.post(url, {name: opt.toUpperCase()}, { auth: {username: keys.value.ck, password: keys.value.cs}})
+      newProduct.value.tags.push(res.data)
+      newProduct.value.tags.splice(newProduct.value.tags.findIndex(item => !item.id), 1)
+    }
+    catch(e){
+      console.log(e.message)
+    }
+  }
+
  const searchCat = async(str, loading) => {
   if(str.length > 1){
     loading(true)
     let url = `${keys.value.url}/wp-json/wc/v3/products/categories?search=${str.toUpperCase()}`
     let res = await axios.get(url, { auth: {username: keys.value.ck, password: keys.value.cs}})
     options.value = await res.data
+    loading(false)
+  }
+ }
+
+ const searchTag = async(str, loading) => {
+  if(str.length > 1){
+    loading(true)
+    let url = `${keys.value.url}/wp-json/wc/v3/products/tags?search=${str.toUpperCase()}`
+    let res = await axios.get(url, { auth: {username: keys.value.ck, password: keys.value.cs}})
+    tags.value = await res.data
     loading(false)
   }
  }
