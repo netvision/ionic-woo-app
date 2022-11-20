@@ -13,6 +13,7 @@
     <ion-content :fullscreen="true">
     <div class="ion-padding">
       <div v-if="products">
+      <h3>Products <span v-if="comp">| {{comp.name}}</span><span v-if="tag">| {{tag.name}}</span></h3>
       <ion-list>
       <ion-item v-for="item in products" :key="item.id">
         <ion-thumbnail slot="start" v-if="item.images.length > 0" @click="doConsole(item.id)">
@@ -23,49 +24,77 @@
         </ion-thumbnail>
         <ion-label class="ion-text-wrap">
           <h3>{{item.name}}</h3>
-          <div v-html="item.short_description"></div>
+          <ion-note v-html="item.short_description"></ion-note>
+          <div style="text-align:right" v-if="item.sale_price"><span style="text-decoration: line-through;">&#8377;{{item.regular_price}}</span> <span>&#8377;{{item.sale_price}}</span></div>
+          <div style="text-align:right" v-else><span>&#8377;{{item.regular_price}}</span></div>
+          <div style="display:flex; justify-content: end;">     
+            <ion-button fill="clear" @click="openGalleryModal(true, item)" size="small">
+              <ion-icon size="small" slot="icon-only" :icon="imagesOutline"></ion-icon>
+            </ion-button>
+            <ion-button fill="clear" @click="openProductModal(true, item)" size="small">
+              <ion-icon size="small" slot="icon-only" :icon="createOutline"></ion-icon>
+            </ion-button>
+            <ion-button fill="clear" @click="showDelAlert(item.id)" size="small">
+              <ion-icon size="small" slot="icon-only" :icon="trashOutline"></ion-icon>
+            </ion-button>
+        </div>   
         </ion-label>
-        <ion-label slot="end">
-          &#8377;{{item.regular_price}}
-        </ion-label>
-        <ion-buttons slot="end">
-          <ion-button @click="openGalleryModal(true, item)">
-            <ion-icon slot="icon-only" :icon="imagesOutline"></ion-icon>
-          </ion-button>
-          <ion-button @click="openProductModal(true, item)">
-            <ion-icon slot="icon-only" :icon="createOutline"></ion-icon>
-          </ion-button>
-          <ion-button @click="showDelAlert(item.id)">
-            <ion-icon slot="icon-only" :icon="trashOutline"></ion-icon>
-          </ion-button>
-        </ion-buttons>
       </ion-item>
       </ion-list>
+      <div style="display:flex; justify-content: center;" v-if="pages > 1">
+        <v-pagination
+          v-model="page"
+          :pages="pages"
+          :range-size="1"
+          active-color="#DCEDFF"
+          @update:modelValue="getProducts"
+        />
+      </div>
       </div>
       <div v-if="products.length == 0" class="ion-padding">
         <ion-spinner name="crescent"></ion-spinner>
       </div>
     </div>
       <div class="ion-padding">
-        <div v-if="tags.length == 0" class="ion-padding">
-          <ion-spinner name="crescent"></ion-spinner>
-        </div>
-        <div>
-          <ion-chip color="primary" v-for="tag in tags" :key="tag.id" outline @click="doConsole(tag.id)">
-            <ion-label>{{tag.name}}</ion-label><ion-label style="background-color:bisque; padding:5px; margin-left:5px; border-radius: 5px;">{{tag.count}}</ion-label>
-          </ion-chip>
-        </div>
-      </div>
-      <div class="ion-padding">
         <div v-if="companies.length == 0" class="ion-padding">
           <ion-spinner name="crescent"></ion-spinner>
         </div>
         <div>
-          <ion-chip color="primary" v-for="com in companies" :key="com.id" @click="doConsole(com.id)">
+          <div style="display:flex; justify-content: space-between; border-bottom: 2px solid #333">
+            <h3>Companies</h3>
+            <v-pagination v-if="compPages > 1"
+              v-model="comPage"
+              :pages="compPages"
+              :range-size="1"
+              active-color="#DCEDFF"
+              @update:modelValue="updateCompanies"
+            />
+          </div>
+          <ion-button size="small" fill="clear" color="primary" v-for="com in companies" :key="com.id" @click="updateProductsByCat(com)">
             <ion-label>{{com.name}}</ion-label><ion-label style="background-color:bisque; padding:5px; margin-left:5px; border-radius: 5px;">{{com.count}}</ion-label>
-          </ion-chip>
+          </ion-button>
         </div>
-      </div>      
+      </div>
+      <div class="ion-padding">
+        <div v-if="tags.length == 0" class="ion-padding">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+        <div>
+          <div style="display:flex; justify-content: space-between; border-bottom: 2px solid #333">
+            <h3>Tags</h3>
+            <v-pagination v-if="tagPages > 1"
+              v-model="tagPage"
+              :pages="tagPages"
+              :range-size="1"
+              active-color="#DCEDFF"
+              @update:modelValue="updateTags"
+            />
+          </div>
+          <ion-button size="small" fill="clear" color="primary" v-for="tag in tags" :key="tag.id" outline @click="updateProductsByTag(tag)">
+            <ion-label>{{tag.name}}</ion-label><ion-label style="background-color:bisque; padding:5px; margin-left:5px; border-radius: 5px;">{{tag.count}}</ion-label>
+          </ion-button>
+        </div>
+      </div>     
     </ion-content>
 
     <ion-modal :is-open="productModal">
@@ -102,12 +131,17 @@
                 @search = "searchCat"
                 append-to-body
                 >
+                <template v-slot:option="option">
+                  <span style="color:#ccc">
+                  {{ option.name }}
+                  </span>
+                </template>
                 <template v-slot:no-options="{ search, searching }">
                     <template v-if="searching">
                       No results found for <em>{{ search }}</em>. Click to create!
                     </template>
                     <em v-else style="opacity: 0.5">Start typing to search for a company.</em>
-              </template>
+                </template>
                 </v-select>
               </ion-item>
               </ion-col>
@@ -129,7 +163,7 @@
                       No results found for <em>{{ search }}</em>. Click to create!
                     </template>
                     <em v-else style="opacity: 0.5">Start typing to search.</em>
-              </template>
+                </template>
                 </v-select>
               </ion-item>
               </ion-col>
@@ -204,10 +238,12 @@ import { useRouter } from 'vue-router';
 import { onMounted, ref } from 'vue'
 import { Camera, CameraResultType } from '@capacitor/camera'
 import axios from 'axios'
-import { alertController, IonPage, IonGrid, IonRow,  IonCol, IonInput, IonHeader, IonModal, IonThumbnail, IonIcon, IonToolbar, IonTitle, IonContent, IonItem, IonList, IonChip, IonLabel, IonButton, IonButtons, IonSpinner } from '@ionic/vue';
+import { alertController, IonPage, IonGrid, IonRow, IonNote, IonCol, IonInput, IonHeader, IonModal, IonThumbnail, IonIcon, IonToolbar, IonTitle, IonContent, IonItem, IonList, IonLabel, IonButton, IonButtons, IonSpinner } from '@ionic/vue';
 import { add, cameraOutline, closeOutline, createOutline, imagesOutline, trashOutline } from 'ionicons/icons'
 import vSelect from 'vue-select'
 import 'vue-select/dist/vue-select.css'
+import VPagination from "@hennge/vue3-pagination";
+import "@hennge/vue3-pagination/dist/vue3-pagination.css";
 import noImage from '../no-image.png'
 const router = useRouter()
 const keys = ref({})
@@ -217,6 +253,7 @@ const defaultProduct = {
     name: "",
     type: "simple",
     regular_price: "",
+    sale_price:"",
     short_description: "",
     categories: [],
     tags: [],
@@ -227,6 +264,51 @@ const tags = ref([])
 const companies = ref([])
 const allCompanies = ref([])
 const allTags = ref([])
+const tag = ref()
+const comp = ref()
+const page = ref(1)
+const pages = ref(1)
+const tagPage = ref(1)
+const tagPages = ref(1)
+const comPage = ref(1)
+const compPages = ref(1)
+const getProducts = async() => {
+  products.value = []
+  let t = (tag.value) ? '&tag='+tag.value.id : ''
+  let c = (comp.value) ? '&category='+comp.value.id : ''
+  let p = (page.value) ? '&page='+page.value : ''
+  let url = `${keys.value.url}/wp-json/wc/v3/products?per_page=10${t}${c}${p}`
+  let auth = {username: keys.value.ck, password: keys.value.cs}
+  let res = await axios.get(url, {auth: auth})
+  products.value = res.data
+  console.log(products.value)
+  pages.value = +res.headers["x-wp-totalpages "]
+}
+
+const updateProductsByCat = (cat) => {
+  comp.value = cat
+  getProducts()
+}
+
+const updateProductsByTag = (t) => {
+  tag.value = t
+  getProducts()
+}
+
+const updateCompanies = async() => {
+  let url = keys.value.url + '/wp-json/wc/v3/'
+  let auth = {username: keys.value.ck, password: keys.value.cs}
+  let cr = await axios.get(url+'products/categories?per_page=10&page='+comPage.value, {auth: auth})
+  companies.value = cr.data
+}
+
+const updateTags = async() => {
+  let url = keys.value.url + '/wp-json/wc/v3/'
+  let auth = {username: keys.value.ck, password: keys.value.cs}
+  let cr = await axios.get(url+'products/tags?per_page=10&page='+tagPage.value, {auth: auth})
+  tags.value = cr.data
+}
+
 const productModal = ref(false)
 const openProductModal = (open, item) => {
   productModal.value = open
@@ -369,7 +451,10 @@ const addProduct = async() => {
   else{
     try {
      let res = await axios.post(url, newProduct.value, { auth: auth})
-     if(res.data) productModal.value = false
+     if(res.data) {
+      productModal.value = false
+      products.value.push(res.data)
+     }
     }
     catch(e){
       console.log(e)
@@ -382,12 +467,16 @@ const doConsole = (id) => console.log(id)
 onMounted(async () => {
   if(localStorage.getItem("keys")) {
     keys.value = JSON.parse(localStorage.getItem('keys'))
+    getProducts()
     let url = keys.value.url + '/wp-json/wc/v3/'
     let auth = {username: keys.value.ck, password: keys.value.cs}
-    products.value = await axios.get(url+'products', {auth: auth}).then( r => r.data)
-    tags.value = await axios.get(url+'products/tags?per_page=20', {auth: auth}).then( r => r.data)
-    companies.value = await axios.get(url+'products/categories?per_page=20', {auth: auth}).then( r=> r.data)
-    console.log(products.value)
+    let tr = await axios.get(url+'products/tags?hide_empty=1&per_page=10', {auth: auth})
+    tags.value = tr.data
+    tagPages.value = +tr.headers["x-wp-totalpages"]
+    let cr = await axios.get(url+'products/categories?hide_empty=1&per_page=10', {auth: auth})
+    companies.value = cr.data
+    compPages.value = +cr.headers["x-wp-totalpages"]
+    console.log(compPages.value)
   }
   else router.push('/tabs/tab3')
 
